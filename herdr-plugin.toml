@@ -1,0 +1,24 @@
+id = "boat.machines"
+name = "Boat Machines"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Manage Boat sandbox lifecycles and connect them as Herdr machines"
+platforms = ["linux", "macos"]
+
+[[actions]]
+id = "manage"
+title = "Manage Boat machines"
+contexts = ["workspace"]
+command = ["node", "src/cli.mjs", "open"]
+
+[[actions]]
+id = "sync"
+title = "Sync Boat machines"
+contexts = ["workspace"]
+command = ["node", "src/cli.mjs", "sync"]
+
+[[panes]]
+id = "manager"
+title = "Boat machines"
+placement = "overlay"
+command = ["node", "src/cli.mjs", "manage"]

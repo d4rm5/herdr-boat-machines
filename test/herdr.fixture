@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+import { readFile, writeFile, rename } from 'node:fs/promises';
+
+const file = process.env.HERDR_FIXTURE_CATALOG;
+const log = process.env.HERDR_FIXTURE_LOG;
+const args = process.argv.slice(2);
+const catalog = JSON.parse(await readFile(file, 'utf8'));
+const fail = JSON.parse(await readFile(process.env.HERDR_FIXTURE_CONTROL, 'utf8'));
+await writeFile(log, `${JSON.stringify(args)}\n`, { flag: 'a' });
+const [group, action, ...rest] = args;
+if (fail.action === action) {
+  process.stderr.write('Herdr fixture rejected local operation\n');
+  process.exit(23);
+}
+const flag = (name, fallback) => {
+  const index = rest.indexOf(name);
+  return index < 0 ? fallback : rest[index + 1];
+};
+const persist = async () => {
+  const temporary = `${file}.${process.pid}`;
+  await writeFile(temporary, JSON.stringify(catalog, null, 2));
+  await rename(temporary, file);
+};
+if (group === 'machine' && action === 'list') {
+  process.stdout.write(`${JSON.stringify(catalog.profiles)}\n`);
+} else if (group === 'machine' && action === 'add') {
+  const target = rest.find((value, index) => !value.startsWith('-') && (index === 0 || !rest[index - 1].startsWith('--')));
+  if (!target) throw new Error('machine add requires a target');
+  const profile = {
+    id: `profile-${catalog.nextId++}`,
+    label: flag('--label', target),
+    target,
+    session: flag('--remote-session', 'default'),
+    enabled: true,
+    selected: false,
+  };
+  catalog.profiles.push(profile);
+  await persist();
+  process.stdout.write(`Saved SSH machine ${profile.id}. Remote server is ready.\nOpen Herdr clients connect automatically.\n`);
+} else if (group === 'machine' && ['enable', 'disable', 'remove', 'rename', 'select'].includes(action)) {
+  const profile = catalog.profiles.find((item) => item.id === rest[0]);
+  if (!profile) throw new Error(`Unknown profile ${rest[0]}`);
+  if (action === 'remove') catalog.profiles.splice(catalog.profiles.indexOf(profile), 1);
+  if (action === 'enable' || action === 'disable') profile.enabled = action === 'enable';
+  if (action === 'rename') profile.label = rest[1];
+  if (action === 'select') {
+    for (const item of catalog.profiles) item.selected = item === profile;
+  }
+  await persist();
+} else if (group === 'plugin' && action === 'pane' && rest[0] === 'open') {
+  process.stdout.write('{}\n');
+} else {
+  process.stderr.write(`Unsupported Herdr fixture command ${JSON.stringify(args)}\n`);
+  process.exitCode = 2;
+}

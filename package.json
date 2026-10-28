@@ -1,0 +1,13 @@
+{
+  "name": "herdr-boat-machines",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Boat sandbox lifecycle management for Herdr machines",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/cli.mjs manage",
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}
